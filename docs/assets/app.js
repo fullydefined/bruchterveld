@@ -61,6 +61,11 @@ function setPlayerInUrl(player) {
 }
 
 function loadPlayer() {
+  const urlPlayer = playerFromUrl();
+  if (urlPlayer) {
+    return urlPlayer;
+  }
+
   try {
     const stored = safeStorageGet(localStorage, STORAGE_KEY);
     if (stored) {
@@ -70,7 +75,7 @@ function loadPlayer() {
     // ignore and fall back to URL state
   }
 
-  return playerFromUrl();
+  return null;
 }
 
 function savePlayer(player) {

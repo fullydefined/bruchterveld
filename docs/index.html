@@ -40,18 +40,18 @@
             </div>
 
             <div class="panel login-card">
-                <div class="stack">
+                <form class="stack" id="continueForm" action="profile.html" method="get">
                     <div>
                         <h2>Enter your player name</h2>
                         <p class="muted">Your name is linked to your ELO and match history in Google Sheets.</p>
                     </div>
                     <div class="field">
                         <label for="playerName">Player name</label>
-                        <input id="playerName" type="text" placeholder="Type your player name">
+                        <input id="playerName" name="name" type="text" placeholder="Type your player name">
                     </div>
-                    <button class="button" id="continueButton">Continue to profile</button>
+                    <button class="button" id="continueButton" type="submit">Continue to profile</button>
                     <div class="tiny" id="landingStatus">If this is a returning player, the app will reuse the same sheet record when the name matches.</div>
-                </div>
+                </form>
 
                 <div class="stat-grid">
                     <div class="stat">
@@ -87,6 +87,7 @@
         const { api, loadPlayer, savePlayer, setPlayerInUrl, updateStatElements } = app;
         const playerName = document.getElementById("playerName");
         const continueButton = document.getElementById("continueButton");
+        const continueForm = document.getElementById("continueForm");
         const landingStatus = document.getElementById("landingStatus");
 
         const existingPlayer = loadPlayer();
@@ -103,30 +104,53 @@
             }
         }
 
-        async function continueToProfile() {
+        async function continueToProfile(event) {
+            if (event) {
+                event.preventDefault();
+            }
             const name = playerName.value.trim();
             if (!name) {
                 landingStatus.textContent = "Enter a player name first.";
                 return;
             }
 
-            savePlayer({
-                name,
-                status: "IDLE",
-                currentMatchId: ""
-            });
-            setPlayerInUrl({ name });
+            continueButton.disabled = true;
+            continueButton.textContent = "Creating profile...";
+            landingStatus.textContent = "Registering your profile in Google Sheets...";
 
-            window.location.assign(`profile.html?name=${encodeURIComponent(name)}`);
+            try {
+                const result = await api("registerPlayer", { name });
+                const registered = result.player || {
+                    name,
+                    elo: 1000,
+                    status: "IDLE",
+                    currentMatchId: ""
+                };
+                const player = {
+                    name: registered.name || name,
+                    playerId: registered.playerId || "",
+                    elo: Number(registered.elo) || 1000,
+                    sessionToken: registered.sessionToken || "",
+                    status: registered.status || "IDLE",
+                    currentMatchId: registered.currentMatchId || "",
+                    opponentId: registered.opponentId || "",
+                    opponentName: registered.opponentName || ""
+                };
+
+                savePlayer(player);
+                setPlayerInUrl(player);
+                landingStatus.textContent = `Profile created for ${player.name}. Opening profile page...`;
+                await new Promise((resolve) => setTimeout(resolve, 250));
+                window.location.assign(`profile.html?${new URLSearchParams(player).toString()}`);
+            } catch (error) {
+                landingStatus.textContent = error.message;
+            } finally {
+                continueButton.disabled = false;
+                continueButton.textContent = "Continue to profile";
+            }
         }
 
-        continueButton.addEventListener("click", continueToProfile);
-        playerName.addEventListener("keydown", (event) => {
-            if (event.key === "Enter") {
-                continueToProfile();
-            }
-        });
-
+        continueForm.addEventListener("submit", continueToProfile);
         refreshCounts();
         setInterval(refreshCounts, 5000);
     </script>

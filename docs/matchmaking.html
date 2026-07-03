@@ -18,7 +18,7 @@
           </div>
         </a>
         <div class="pill-row">
-          <a class="pill" href="profile.html">Back to profile</a>
+          <a class="pill" id="backToProfileLink" href="profile.html">Back to profile</a>
         </div>
       </div>
 
@@ -64,6 +64,17 @@
     const matchmakingStatus = document.getElementById("matchmakingStatus");
     const matchFlash = document.getElementById("matchFlash");
     const cancelButton = document.getElementById("cancelButton");
+    const backToProfileLink = document.getElementById("backToProfileLink");
+
+    function playerQueryString(player) {
+      const query = new URLSearchParams();
+      ["playerId", "name", "elo", "sessionToken", "status", "currentMatchId", "opponentId", "opponentName"].forEach((key) => {
+        if (player[key] !== undefined && player[key] !== null && player[key] !== "") {
+          query.set(key, String(player[key]));
+        }
+      });
+      return query.toString();
+    }
 
     let currentPlayer = ensurePlayer();
     let hasMatched = false;
@@ -83,6 +94,9 @@
           currentPlayer = { ...stored, ...result.player };
           savePlayer(currentPlayer);
           setPlayerInUrl(currentPlayer);
+          const query = playerQueryString(currentPlayer);
+          cancelButton.href = `profile.html${query ? `?${query}` : ""}`;
+          backToProfileLink.href = cancelButton.href;
         }
 
         if (result.state === "MATCHED" && result.match) {
@@ -112,17 +126,14 @@
     }
 
     cancelButton.addEventListener("click", () => {
-      const query = new URLSearchParams();
       const nextPlayer = currentPlayer || loadPlayer();
-      if (nextPlayer) {
-        ["playerId", "name", "elo", "sessionToken", "status", "currentMatchId", "opponentId", "opponentName"].forEach((key) => {
-          if (nextPlayer[key] !== undefined && nextPlayer[key] !== null && nextPlayer[key] !== "") {
-            query.set(key, String(nextPlayer[key]));
-          }
-        });
-      }
-      window.location.assign(`profile.html${query.toString() ? `?${query.toString()}` : ""}`);
+      const query = nextPlayer ? playerQueryString(nextPlayer) : "";
+      window.location.assign(`profile.html${query ? `?${query}` : ""}`);
     });
+
+    const initialQuery = currentPlayer ? playerQueryString(currentPlayer) : "";
+    cancelButton.href = `profile.html${initialQuery ? `?${initialQuery}` : ""}`;
+    backToProfileLink.href = cancelButton.href;
 
     if (currentPlayer) {
       matchmakingStatus.textContent = `Searching as ${playerLabel(currentPlayer)}.`;
