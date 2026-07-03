@@ -1,158 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/svg+xml" href="../assets/Logo FD smallArtboard 1_3.svg">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bruchterveld Matchmaking</title>
-    <link rel="stylesheet" href="assets/site.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Files ➤ Andor</title>
+    <style>
+        /* Remove all default spacing */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* Prevents double scrollbars */
+            background-color: #000; /* Matches your theme while loading */
+        }
+
+        /* Force the iframe to fill the entire viewport */
+        #gas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
 </head>
 <body>
-    <div class="shell">
-        <div class="topbar">
-            <div class="brand">
-                <div class="brand-mark"></div>
-                <div class="brand-title">
-                    <strong>Bruchterveld League</strong>
-                    <span>ELO matchmaking and score tracking</span>
-                </div>
-            </div>
-            <div class="pill-row">
-                <div class="pill">Live sheet sync</div>
-                <div class="pill">Auto ELO updates</div>
-            </div>
-        </div>
 
-        <section class="hero">
-            <div class="panel hero-banner">
-                <div class="banner-copy">
-                    <div class="eyebrow">Competitive matchmaking</div>
-                    <h1>Find a match, play, and let the sheet keep score.</h1>
-                    <p data-banner-copy>
-                        Enter your player name to continue. This landing banner is intentionally editable later so you can swap in event text, season notes, or a new announcement without changing the app flow.
-                    </p>
-                    <div class="pill-row" style="margin-top: 24px;">
-                        <div class="pill">Landing page</div>
-                        <div class="pill">Profile page</div>
-                        <div class="pill">Matchmaking page</div>
-                        <div class="pill">Game page</div>
-                    </div>
-                </div>
-            </div>
+    <iframe 
+        id="gas-container" 
+        src="https://script.google.com/macros/s/AKfycbwtNB27swoFp4TN287JgDHRZCE7By6iVyawAgeF6QFCdcXSMVlxP4Avnr-9PwKmuUSY/exec" 
+    </iframe>
 
-            <div class="panel login-card">
-                <form class="stack" id="continueForm" action="profile.html" method="get">
-                    <div>
-                        <h2>Enter your player name</h2>
-                        <p class="muted">Your name is linked to your ELO and match history in Google Sheets.</p>
-                    </div>
-                    <div class="field">
-                        <label for="playerName">Player name</label>
-                        <input id="playerName" name="name" type="text" placeholder="Type your player name">
-                    </div>
-                    <button class="button" id="continueButton" type="submit">Continue to profile</button>
-                    <div class="tiny" id="landingStatus">If this is a returning player, the app will reuse the same sheet record when the name matches.</div>
-                </form>
-
-                <div class="stat-grid">
-                    <div class="stat">
-                        <span class="muted">Waiting</span>
-                        <strong data-stat="waiting">0</strong>
-                    </div>
-                    <div class="stat">
-                        <span class="muted">Searching</span>
-                        <strong data-stat="searching">0</strong>
-                    </div>
-                    <div class="stat">
-                        <span class="muted">In game</span>
-                        <strong data-stat="inGame">0</strong>
-                    </div>
-                    <div class="stat">
-                        <span class="muted">Games open</span>
-                        <strong data-stat="availableGames">0</strong>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <script src="assets/app.js"></script>
-    <script>
-        const app = window.Bruchterveld || {
-            api: async () => ({ counts: {} }),
-            loadPlayer: () => null,
-            savePlayer: () => {},
-            setPlayerInUrl: () => {},
-            updateStatElements: () => {}
-        };
-        const { api, loadPlayer, savePlayer, setPlayerInUrl, updateStatElements } = app;
-        const playerName = document.getElementById("playerName");
-        const continueButton = document.getElementById("continueButton");
-        const continueForm = document.getElementById("continueForm");
-        const landingStatus = document.getElementById("landingStatus");
-
-        const existingPlayer = loadPlayer();
-        if (existingPlayer && existingPlayer.name) {
-            playerName.value = existingPlayer.name;
-        }
-
-        async function refreshCounts() {
-            try {
-                const data = await api("bootstrap", existingPlayer ? { token: existingPlayer.sessionToken } : {});
-                updateStatElements(data.counts || {});
-            } catch (error) {
-                landingStatus.textContent = error.message;
-            }
-        }
-
-        async function continueToProfile(event) {
-            if (event) {
-                event.preventDefault();
-            }
-            const name = playerName.value.trim();
-            if (!name) {
-                landingStatus.textContent = "Enter a player name first.";
-                return;
-            }
-
-            continueButton.disabled = true;
-            continueButton.textContent = "Creating profile...";
-            landingStatus.textContent = "Registering your profile in Google Sheets...";
-
-            try {
-                const result = await api("registerPlayer", { name });
-                const registered = result.player || {
-                    name,
-                    elo: 1000,
-                    status: "IDLE",
-                    currentMatchId: ""
-                };
-                const player = {
-                    name: registered.name || name,
-                    playerId: registered.playerId || "",
-                    elo: Number(registered.elo) || 1000,
-                    sessionToken: registered.sessionToken || "",
-                    status: registered.status || "IDLE",
-                    currentMatchId: registered.currentMatchId || "",
-                    opponentId: registered.opponentId || "",
-                    opponentName: registered.opponentName || ""
-                };
-
-                savePlayer(player);
-                setPlayerInUrl(player);
-                landingStatus.textContent = `Profile created for ${player.name}. Opening profile page...`;
-                await new Promise((resolve) => setTimeout(resolve, 250));
-                window.location.assign(`profile.html?${new URLSearchParams(player).toString()}`);
-            } catch (error) {
-                landingStatus.textContent = error.message;
-            } finally {
-                continueButton.disabled = false;
-                continueButton.textContent = "Continue to profile";
-            }
-        }
-
-        continueForm.addEventListener("submit", continueToProfile);
-        refreshCounts();
-        setInterval(refreshCounts, 5000);
-    </script>
 </body>
 </html>
