@@ -54,7 +54,26 @@
 
   <script src="assets/app.js"></script>
   <script>
-    const { api, ensurePlayer, loadPlayer, savePlayer, formatElo } = window.Bruchterveld;
+    const app = window.Bruchterveld || {
+      api: async () => ({ match: null }),
+      ensurePlayer: () => ({ name: "", sessionToken: "" }),
+      loadPlayer: () => null,
+      savePlayer: () => {},
+      setPlayerInUrl: () => {},
+      formatElo: (value) => Number(value || 1000).toLocaleString()
+    };
+    const { api, ensurePlayer, loadPlayer, savePlayer, setPlayerInUrl, formatElo } = app;
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPlayer = {
+      playerId: urlParams.get("playerId") || "",
+      name: urlParams.get("name") || "",
+      elo: Number(urlParams.get("elo") || 1000),
+      sessionToken: urlParams.get("sessionToken") || "",
+      status: urlParams.get("status") || "",
+      currentMatchId: urlParams.get("currentMatchId") || "",
+      opponentId: urlParams.get("opponentId") || "",
+      opponentName: urlParams.get("opponentName") || ""
+    };
     const matchBanner = document.getElementById("matchBanner");
     const playerOneName = document.getElementById("playerOneName");
     const playerTwoName = document.getElementById("playerTwoName");
@@ -65,7 +84,7 @@
     const resultStatus = document.getElementById("resultStatus");
     const lostButton = document.getElementById("lostButton");
 
-    let currentPlayer = ensurePlayer();
+    let currentPlayer = loadPlayer() || urlPlayer || ensurePlayer();
     let currentMatch = null;
     let submittedLoss = false;
 
@@ -96,6 +115,7 @@
         if (result.player) {
           currentPlayer = { ...stored, ...result.player };
           savePlayer(currentPlayer);
+          setPlayerInUrl(currentPlayer);
         }
 
         if (result.match) {
@@ -141,6 +161,11 @@
         if (result.match) {
           renderMatch(result.match);
         }
+          if (result.player) {
+            currentPlayer = { ...stored, ...result.player };
+            savePlayer(currentPlayer);
+            setPlayerInUrl(currentPlayer);
+          }
         resultStatus.textContent = result.message || "Loss submitted.";
       } catch (error) {
         resultStatus.textContent = error.message;

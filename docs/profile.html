@@ -67,7 +67,15 @@
 
   <script src="assets/app.js"></script>
   <script>
-    const { api, loadPlayer, savePlayer, formatElo, updateStatElements } = window.Bruchterveld;
+    const app = window.Bruchterveld || {
+      api: async () => ({ counts: {} }),
+      loadPlayer: () => null,
+      savePlayer: () => {},
+      setPlayerInUrl: () => {},
+      formatElo: (value) => Number(value || 1000).toLocaleString(),
+      updateStatElements: () => {}
+    };
+    const { api, loadPlayer, savePlayer, setPlayerInUrl, formatElo, updateStatElements } = app;
     const profileName = document.getElementById("profileName");
     const profileElo = document.getElementById("profileElo");
     const profileStatus = document.getElementById("profileStatus");
@@ -86,30 +94,45 @@
         return stored;
       }
 
-      const result = await api("registerPlayer", { name: stored.name });
-      if (!result.player) {
+      try {
+        const result = await api("registerPlayer", { name: stored.name });
+        if (!result.player) {
+          return stored;
+        }
+
+        const registered = {
+          ...stored,
+          playerId: result.player.playerId,
+          name: result.player.name,
+          elo: result.player.elo,
+          sessionToken: result.player.sessionToken,
+          status: result.player.status,
+          currentMatchId: result.player.currentMatchId || ""
+        };
+
+        savePlayer(registered);
+        setPlayerInUrl(registered);
+        return registered;
+      } catch (error) {
         return stored;
       }
-
-      const registered = {
-        ...stored,
-        playerId: result.player.playerId,
-        name: result.player.name,
-        elo: result.player.elo,
-        sessionToken: result.player.sessionToken,
-        status: result.player.status,
-        currentMatchId: result.player.currentMatchId || ""
-      };
-
-      savePlayer(registered);
-      return registered;
     }
 
     async function refreshProfile() {
       const stored = loadPlayer();
       if (!stored) {
-        window.location.href = "index.html";
-        return;
+        const params = new URLSearchParams(window.location.search);
+        const queryName = params.get("name");
+        if (!queryName) {
+          window.location.href = "index.html";
+          return;
+        }
+
+        const draft = { name: queryName, status: "IDLE", currentMatchId: "" };
+        savePlayer(draft);
+        setPlayerInUrl(draft);
+        player = draft;
+        return refreshProfile();
       }
 
       try {
@@ -153,7 +176,13 @@
       findMatchButton.textContent = "Searching...";
       profileStatus.textContent = "Requesting a match...";
 
-      window.location.assign("matchmaking.html");
+      const query = new URLSearchParams();
+      ["playerId", "name", "elo", "sessionToken", "status", "currentMatchId", "opponentId", "opponentName"].forEach((key) => {
+        if (stored[key] !== undefined && stored[key] !== null && stored[key] !== "") {
+          query.set(key, String(stored[key]));
+        }
+      });
+      window.location.assign(`matchmaking.html${query.toString() ? `?${query.toString()}` : ""}`);
 
       try {
         const result = await api("findMatch", { token: stored.sessionToken, name: stored.name, playerId: stored.playerId });
@@ -162,7 +191,14 @@
         }
 
         if (result.state === "MATCHED" && result.match) {
-          window.location.assign("match.html");
+          const nextPlayer = result.player || stored;
+          const query = new URLSearchParams();
+          ["playerId", "name", "elo", "sessionToken", "status", "currentMatchId", "opponentId", "opponentName"].forEach((key) => {
+            if (nextPlayer[key] !== undefined && nextPlayer[key] !== null && nextPlayer[key] !== "") {
+              query.set(key, String(nextPlayer[key]));
+            }
+          });
+          window.location.assign(`match.html${query.toString() ? `?${query.toString()}` : ""}`);
           return;
         }
       } catch (error) {

@@ -51,7 +51,16 @@
 
   <script src="assets/app.js"></script>
   <script>
-    const { api, ensurePlayer, loadPlayer, savePlayer, updateStatElements, playerLabel } = window.Bruchterveld;
+    const app = window.Bruchterveld || {
+      api: async () => ({ counts: {} }),
+      ensurePlayer: () => ({ name: "", sessionToken: "" }),
+      loadPlayer: () => null,
+      savePlayer: () => {},
+      setPlayerInUrl: () => {},
+      updateStatElements: () => {},
+      playerLabel: () => "Unknown player"
+    };
+    const { api, ensurePlayer, loadPlayer, savePlayer, setPlayerInUrl, updateStatElements, playerLabel } = app;
     const matchmakingStatus = document.getElementById("matchmakingStatus");
     const matchFlash = document.getElementById("matchFlash");
     const cancelButton = document.getElementById("cancelButton");
@@ -73,6 +82,7 @@
         if (result.player) {
           currentPlayer = { ...stored, ...result.player };
           savePlayer(currentPlayer);
+          setPlayerInUrl(currentPlayer);
         }
 
         if (result.state === "MATCHED" && result.match) {
@@ -82,7 +92,14 @@
             matchFlash.textContent = `${result.match.player1Name} vs ${result.match.player2Name}`;
             matchmakingStatus.textContent = `Game selected: ${result.match.gameTitle}. Opening the match page...`;
             setTimeout(() => {
-              window.location.assign("match.html");
+              const nextPlayer = currentPlayer || result.player || stored;
+              const query = new URLSearchParams();
+              ["playerId", "name", "elo", "sessionToken", "status", "currentMatchId", "opponentId", "opponentName"].forEach((key) => {
+                if (nextPlayer[key] !== undefined && nextPlayer[key] !== null && nextPlayer[key] !== "") {
+                  query.set(key, String(nextPlayer[key]));
+                }
+              });
+              window.location.assign(`match.html${query.toString() ? `?${query.toString()}` : ""}`);
             }, 1800);
           }
           return;
@@ -95,7 +112,16 @@
     }
 
     cancelButton.addEventListener("click", () => {
-      window.location.href = "profile.html";
+      const query = new URLSearchParams();
+      const nextPlayer = currentPlayer || loadPlayer();
+      if (nextPlayer) {
+        ["playerId", "name", "elo", "sessionToken", "status", "currentMatchId", "opponentId", "opponentName"].forEach((key) => {
+          if (nextPlayer[key] !== undefined && nextPlayer[key] !== null && nextPlayer[key] !== "") {
+            query.set(key, String(nextPlayer[key]));
+          }
+        });
+      }
+      window.location.assign(`profile.html${query.toString() ? `?${query.toString()}` : ""}`);
     });
 
     if (currentPlayer) {

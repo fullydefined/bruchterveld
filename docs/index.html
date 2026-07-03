@@ -77,7 +77,14 @@
 
     <script src="assets/app.js"></script>
     <script>
-        const { api, loadPlayer, savePlayer, updateStatElements } = window.Bruchterveld;
+        const app = window.Bruchterveld || {
+            api: async () => ({ counts: {} }),
+            loadPlayer: () => null,
+            savePlayer: () => {},
+            setPlayerInUrl: () => {},
+            updateStatElements: () => {}
+        };
+        const { api, loadPlayer, savePlayer, setPlayerInUrl, updateStatElements } = app;
         const playerName = document.getElementById("playerName");
         const continueButton = document.getElementById("continueButton");
         const landingStatus = document.getElementById("landingStatus");
@@ -108,8 +115,9 @@
                 status: "IDLE",
                 currentMatchId: ""
             });
+            setPlayerInUrl({ name });
 
-            window.location.assign("profile.html");
+            window.location.assign(`profile.html?name=${encodeURIComponent(name)}`);
         }
 
         continueButton.addEventListener("click", continueToProfile);
