@@ -103,29 +103,13 @@
                 return;
             }
 
-            continueButton.disabled = true;
-            continueButton.textContent = "Saving...";
-            landingStatus.textContent = "Registering player...";
+            savePlayer({
+                name,
+                status: "IDLE",
+                currentMatchId: ""
+            });
 
-            try {
-                const result = await api("registerPlayer", { name });
-                const player = result.player;
-                savePlayer({
-                    playerId: player.playerId,
-                    name: player.name,
-                    elo: player.elo,
-                    sessionToken: player.sessionToken,
-                    status: player.status,
-                    currentMatchId: player.currentMatchId || ""
-                });
-
-                window.location.href = "profile.html";
-            } catch (error) {
-                landingStatus.textContent = error.message;
-            } finally {
-                continueButton.disabled = false;
-                continueButton.textContent = "Continue to profile";
-            }
+            window.location.assign("profile.html");
         }
 
         continueButton.addEventListener("click", continueToProfile);

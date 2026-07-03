@@ -82,7 +82,7 @@
             matchFlash.textContent = `${result.match.player1Name} vs ${result.match.player2Name}`;
             matchmakingStatus.textContent = `Game selected: ${result.match.gameTitle}. Opening the match page...`;
             setTimeout(() => {
-              window.location.href = "match.html";
+              window.location.assign("match.html");
             }, 1800);
           }
           return;

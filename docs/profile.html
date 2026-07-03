@@ -67,7 +67,7 @@
 
   <script src="assets/app.js"></script>
   <script>
-    const { api, ensurePlayer, loadPlayer, savePlayer, formatElo, updateStatElements } = window.Bruchterveld;
+    const { api, loadPlayer, savePlayer, formatElo, updateStatElements } = window.Bruchterveld;
     const profileName = document.getElementById("profileName");
     const profileElo = document.getElementById("profileElo");
     const profileStatus = document.getElementById("profileStatus");
@@ -75,7 +75,35 @@
     const findMatchButton = document.getElementById("findMatchButton");
     const refreshProfileButton = document.getElementById("refreshProfileButton");
 
-    let player = ensurePlayer();
+    let player = loadPlayer();
+
+    async function ensureRegistered(stored) {
+      if (!stored) {
+        return null;
+      }
+
+      if (stored.sessionToken) {
+        return stored;
+      }
+
+      const result = await api("registerPlayer", { name: stored.name });
+      if (!result.player) {
+        return stored;
+      }
+
+      const registered = {
+        ...stored,
+        playerId: result.player.playerId,
+        name: result.player.name,
+        elo: result.player.elo,
+        sessionToken: result.player.sessionToken,
+        status: result.player.status,
+        currentMatchId: result.player.currentMatchId || ""
+      };
+
+      savePlayer(registered);
+      return registered;
+    }
 
     async function refreshProfile() {
       const stored = loadPlayer();
@@ -85,12 +113,15 @@
       }
 
       try {
-        const data = await api("bootstrap", { token: stored.sessionToken });
+        const registered = await ensureRegistered(stored);
+        const data = await api("bootstrap", { token: registered.sessionToken });
         updateStatElements(data.counts || {});
 
         if (data.player) {
-          player = { ...stored, ...data.player };
+          player = { ...registered, ...data.player };
           savePlayer(player);
+        } else {
+          player = registered;
         }
 
         profileName.textContent = player.name;
@@ -122,6 +153,8 @@
       findMatchButton.textContent = "Searching...";
       profileStatus.textContent = "Requesting a match...";
 
+      window.location.assign("matchmaking.html");
+
       try {
         const result = await api("findMatch", { token: stored.sessionToken, name: stored.name, playerId: stored.playerId });
         if (result.player) {
@@ -129,11 +162,9 @@
         }
 
         if (result.state === "MATCHED" && result.match) {
-          window.location.href = "match.html";
+          window.location.assign("match.html");
           return;
         }
-
-        window.location.href = "matchmaking.html";
       } catch (error) {
         profileStatus.textContent = error.message;
       } finally {
