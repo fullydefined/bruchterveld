@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Match | Bruchterveld</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <div class="shell match-stage">
+    <section class="panel match-card">
+      <div class="topbar" style="margin-bottom: 16px;">
+        <a class="brand" href="profile.html">
+          <div class="brand-mark"></div>
+          <div class="brand-title">
+            <strong>Bruchterveld League</strong>
+            <span>Match in progress</span>
+          </div>
+        </a>
+        <div class="pill-row">
+          <a class="pill" href="profile.html">Profile</a>
+        </div>
+      </div>
+
+      <div class="match-flash" id="matchBanner">Loading match...</div>
+      <div class="vs-line">
+        <div class="player-chip">
+          <span class="muted">Player 1</span>
+          <strong id="playerOneName">...</strong>
+          <div class="tiny" id="playerOneElo">ELO: ...</div>
+        </div>
+        <div class="vs-badge">VS</div>
+        <div class="player-chip">
+          <span class="muted">Player 2</span>
+          <strong id="playerTwoName">...</strong>
+          <div class="tiny" id="playerTwoElo">ELO: ...</div>
+        </div>
+      </div>
+
+      <div class="panel content-card" style="background: rgba(255,255,255,0.03); margin-bottom: 18px;">
+        <h2 id="gameTitle">Game title</h2>
+        <p class="game-description" id="gameDescription">Loading game description from GAS...</p>
+      </div>
+
+      <div class="stack">
+        <button class="button danger" id="lostButton">Click here if you lost the match</button>
+        <div class="status-box">
+          <div class="status-label">Live result sync</div>
+          <div class="status-value" id="resultStatus">Waiting for both players or a loss report.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    const { api, ensurePlayer, loadPlayer, savePlayer, formatElo } = window.Bruchterveld;
+    const matchBanner = document.getElementById("matchBanner");
+    const playerOneName = document.getElementById("playerOneName");
+    const playerTwoName = document.getElementById("playerTwoName");
+    const playerOneElo = document.getElementById("playerOneElo");
+    const playerTwoElo = document.getElementById("playerTwoElo");
+    const gameTitle = document.getElementById("gameTitle");
+    const gameDescription = document.getElementById("gameDescription");
+    const resultStatus = document.getElementById("resultStatus");
+    const lostButton = document.getElementById("lostButton");
+
+    let currentPlayer = ensurePlayer();
+    let currentMatch = null;
+    let submittedLoss = false;
+
+    function renderMatch(match) {
+      if (!match) {
+        return;
+      }
+
+      currentMatch = match;
+      matchBanner.textContent = `${match.player1Name} vs ${match.player2Name}`;
+      playerOneName.textContent = match.player1Name;
+      playerTwoName.textContent = match.player2Name;
+      playerOneElo.textContent = `ELO: ${formatElo(match.player1Elo)}`;
+      playerTwoElo.textContent = `ELO: ${formatElo(match.player2Elo)}`;
+      gameTitle.textContent = match.gameTitle;
+      gameDescription.textContent = match.gameDescription;
+    }
+
+    async function pollMatch() {
+      const stored = loadPlayer();
+      if (!stored) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      try {
+        const result = await api("matchStatus", { token: stored.sessionToken, playerId: stored.playerId });
+        if (result.player) {
+          currentPlayer = { ...stored, ...result.player };
+          savePlayer(currentPlayer);
+        }
+
+        if (result.match) {
+          renderMatch(result.match);
+        }
+
+        if (result.match && result.match.status === "COMPLETED") {
+          const winnerText = result.match.winnerName ? `${result.match.winnerName} won the match.` : "Match completed.";
+          resultStatus.textContent = winnerText;
+          lostButton.disabled = true;
+          setTimeout(() => {
+            window.location.href = "profile.html";
+          }, 2400);
+          return;
+        }
+
+        if (submittedLoss) {
+          resultStatus.textContent = "Loss report sent. Waiting for the opponent to sync.";
+          return;
+        }
+
+        resultStatus.textContent = result.match
+          ? "Match live. Use the button below only if you lost."
+          : "Waiting for match data from GAS...";
+      } catch (error) {
+        resultStatus.textContent = error.message;
+      }
+    }
+
+    lostButton.addEventListener("click", async () => {
+      const stored = loadPlayer();
+      if (!stored) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      lostButton.disabled = true;
+      lostButton.textContent = "Submitting loss...";
+
+      try {
+        const result = await api("reportLoss", { token: stored.sessionToken, playerId: stored.playerId });
+        submittedLoss = true;
+        if (result.match) {
+          renderMatch(result.match);
+        }
+        resultStatus.textContent = result.message || "Loss submitted.";
+      } catch (error) {
+        resultStatus.textContent = error.message;
+      } finally {
+        lostButton.disabled = false;
+        lostButton.textContent = "Click here if you lost the match";
+      }
+    });
+
+    pollMatch();
+    setInterval(pollMatch, 3000);
+  </script>
+</body>
+</html>

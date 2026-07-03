@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Profile | Bruchterveld</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <a class="brand" href="index.html">
+        <div class="brand-mark"></div>
+        <div class="brand-title">
+          <strong>Bruchterveld League</strong>
+          <span>Player profile</span>
+        </div>
+      </a>
+      <div class="pill-row">
+        <a class="pill" href="index.html">Switch player</a>
+        <a class="pill" href="matchmaking.html">Matchmaking</a>
+      </div>
+    </div>
+
+    <section class="page-grid">
+      <div class="panel profile-panel">
+        <div class="eyebrow">Profile overview</div>
+        <h1 class="profile-name" id="profileName">Loading...</h1>
+        <div class="profile-elo" id="profileElo">Current ELO: ...</div>
+
+        <div class="divider"></div>
+
+        <div class="stack">
+          <div class="status-box">
+            <div class="status-label">Matchmaking status</div>
+            <div class="status-value" id="profileStatus">Checking account...</div>
+          </div>
+          <button class="button" id="findMatchButton">Find a match</button>
+          <button class="button secondary" id="refreshProfileButton">Refresh profile data</button>
+          <div class="tiny" id="profileNote">The profile page keeps polling for live counts from GAS.</div>
+        </div>
+      </div>
+
+      <div class="card-grid">
+        <div class="panel content-card">
+          <h2>Live lobby counts</h2>
+          <div class="stat-grid" style="margin-top: 16px;">
+            <div class="stat"><span class="muted">Waiting</span><strong data-stat="waiting">0</strong></div>
+            <div class="stat"><span class="muted">Searching</span><strong data-stat="searching">0</strong></div>
+            <div class="stat"><span class="muted">In game</span><strong data-stat="inGame">0</strong></div>
+            <div class="stat"><span class="muted">Games open</span><strong data-stat="availableGames">0</strong></div>
+          </div>
+        </div>
+
+        <div class="panel content-card">
+          <h2>What happens next</h2>
+          <p>
+            When you press <strong>Find a match</strong>, the app marks you as searching, asks GAS for an available opponent, then claims an open game from the Games sheet. The match page reads the game description directly from the sheet and waits for either player to report a loss.
+          </p>
+          <p class="footer-note">
+            Your ELO will be updated only after the result is resolved in the backend and written to Game History.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    const { api, ensurePlayer, loadPlayer, savePlayer, formatElo, updateStatElements } = window.Bruchterveld;
+    const profileName = document.getElementById("profileName");
+    const profileElo = document.getElementById("profileElo");
+    const profileStatus = document.getElementById("profileStatus");
+    const profileNote = document.getElementById("profileNote");
+    const findMatchButton = document.getElementById("findMatchButton");
+    const refreshProfileButton = document.getElementById("refreshProfileButton");
+
+    let player = ensurePlayer();
+
+    async function refreshProfile() {
+      const stored = loadPlayer();
+      if (!stored) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      try {
+        const data = await api("bootstrap", { token: stored.sessionToken });
+        updateStatElements(data.counts || {});
+
+        if (data.player) {
+          player = { ...stored, ...data.player };
+          savePlayer(player);
+        }
+
+        profileName.textContent = player.name;
+        profileElo.textContent = `Current ELO: ${formatElo(player.elo)}`;
+        profileStatus.textContent = player.status === "IN_GAME"
+          ? `In a match: ${player.opponentName || "opponent"}`
+          : player.status === "SEARCHING"
+            ? "Searching for a match"
+            : "Ready to find a match";
+
+        if (data.match && data.match.matchId) {
+          profileNote.textContent = `Active match ${data.match.gameTitle} is attached to your account.`;
+        } else {
+          profileNote.textContent = "The profile page keeps polling for live counts from GAS.";
+        }
+      } catch (error) {
+        profileStatus.textContent = error.message;
+      }
+    }
+
+    async function findMatch() {
+      const stored = loadPlayer();
+      if (!stored) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      findMatchButton.disabled = true;
+      findMatchButton.textContent = "Searching...";
+      profileStatus.textContent = "Requesting a match...";
+
+      try {
+        const result = await api("findMatch", { token: stored.sessionToken, name: stored.name, playerId: stored.playerId });
+        if (result.player) {
+          savePlayer({ ...stored, ...result.player });
+        }
+
+        if (result.state === "MATCHED" && result.match) {
+          window.location.href = "match.html";
+          return;
+        }
+
+        window.location.href = "matchmaking.html";
+      } catch (error) {
+        profileStatus.textContent = error.message;
+      } finally {
+        findMatchButton.disabled = false;
+        findMatchButton.textContent = "Find a match";
+      }
+    }
+
+    findMatchButton.addEventListener("click", findMatch);
+    refreshProfileButton.addEventListener("click", refreshProfile);
+
+    refreshProfile();
+    setInterval(refreshProfile, 5000);
+  </script>
+</body>
+</html>

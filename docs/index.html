@@ -3,179 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elo Matchmaking - Live Sync</title>
-    <style>
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            padding: 2rem; 
-            background-color: #0f172a; 
-            color: #f8fafc; 
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .container {
-            background-color: #1e293b; 
-            padding: 2rem; 
-            border-radius: 12px; 
-            border: 1px solid #334155;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        }
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 2rem;
-        }
-        input {
-            flex-grow: 1;
-            padding: 0.75rem;
-            border-radius: 6px;
-            border: 1px solid #334155;
-            background-color: #0f172a;
-            color: white;
-            font-size: 1rem;
-        }
-        input:focus {
-            outline: none;
-            border-color: #6366f1;
-        }
-        button { 
-            padding: 0.75rem 1.5rem; 
-            background-color: #6366f1; 
-            color: white; 
-            border: none; 
-            border-radius: 6px; 
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer; 
-            transition: background-color 0.2s;
-            white-space: nowrap;
-        }
-        button:hover { background-color: #4f46e5; }
-        button:disabled { background-color: #475569; cursor: not-allowed; }
-        .header-flex {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #334155; 
-            padding-bottom: 0.5rem;
-        }
-        .status {
-            font-size: 0.875rem;
-            color: #94a3b8;
-            font-weight: 500;
-        }
-        pre { 
-            background-color: #020617; 
-            padding: 1.5rem; 
-            border-radius: 8px; 
-            overflow-x: auto; 
-            color: #10b981; 
-            border: 1px solid #1e293b;
-            min-height: 100px;
-        }
-    </style>
+    <title>Bruchterveld Matchmaking</title>
+    <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-
-    <div class="container">
-        <h1 style="margin-top: 0;">Live Lobby Sync</h1>
-        <p style="color: #94a3b8; margin-bottom: 2rem;">
-            This page automatically checks the database every 3 seconds. Enter a name below and submit to see it appear across all your devices!
-        </p>
-        
-        <div class="input-group">
-            <input type="text" id="nameInput" placeholder="Enter new player name...">
-            <button id="addButton">Add Player</button>
+    <div class="shell">
+        <div class="topbar">
+            <div class="brand">
+                <div class="brand-mark"></div>
+                <div class="brand-title">
+                    <strong>Bruchterveld League</strong>
+                    <span>ELO matchmaking and score tracking</span>
+                </div>
+            </div>
+            <div class="pill-row">
+                <div class="pill">Live sheet sync</div>
+                <div class="pill">Auto ELO updates</div>
+            </div>
         </div>
 
-        <div class="header-flex">
-            <h3 style="margin: 0;">Database Output:</h3>
-            <span class="status" id="statusIndicator">Waiting for data...</span>
-        </div>
-        <pre id="output">Loading initial data...</pre>
+        <section class="hero">
+            <div class="panel hero-banner">
+                <div class="banner-copy">
+                    <div class="eyebrow">Competitive matchmaking</div>
+                    <h1>Find a match, play, and let the sheet keep score.</h1>
+                    <p data-banner-copy>
+                        Enter your player name to continue. This landing banner is intentionally editable later so you can swap in event text, season notes, or a new announcement without changing the app flow.
+                    </p>
+                    <div class="pill-row" style="margin-top: 24px;">
+                        <div class="pill">Landing page</div>
+                        <div class="pill">Profile page</div>
+                        <div class="pill">Matchmaking page</div>
+                        <div class="pill">Game page</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel login-card">
+                <div class="stack">
+                    <div>
+                        <h2>Enter your player name</h2>
+                        <p class="muted">Your name is linked to your ELO and match history in Google Sheets.</p>
+                    </div>
+                    <div class="field">
+                        <label for="playerName">Player name</label>
+                        <input id="playerName" type="text" placeholder="Type your player name">
+                    </div>
+                    <button class="button" id="continueButton">Continue to profile</button>
+                    <div class="tiny" id="landingStatus">If this is a returning player, the app will reuse the same sheet record when the name matches.</div>
+                </div>
+
+                <div class="stat-grid">
+                    <div class="stat">
+                        <span class="muted">Waiting</span>
+                        <strong data-stat="waiting">0</strong>
+                    </div>
+                    <div class="stat">
+                        <span class="muted">Searching</span>
+                        <strong data-stat="searching">0</strong>
+                    </div>
+                    <div class="stat">
+                        <span class="muted">In game</span>
+                        <strong data-stat="inGame">0</strong>
+                    </div>
+                    <div class="stat">
+                        <span class="muted">Games open</span>
+                        <strong data-stat="availableGames">0</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
+    <script src="assets/app.js"></script>
     <script>
-        // Your exact Web App URL
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwq6LDLCrEi6_b8_eJL3kE2uHPfqdSItc2xocvdKD_gY0cJfeXylIEH3BOAUPwgEtjpVw/exec";
-        
-        const nameInput = document.getElementById("nameInput");
-        const addButton = document.getElementById("addButton");
-        const output = document.getElementById("output");
-        const statusIndicator = document.getElementById("statusIndicator");
+        const { api, loadPlayer, savePlayer, updateStatElements } = window.Bruchterveld;
+        const playerName = document.getElementById("playerName");
+        const continueButton = document.getElementById("continueButton");
+        const landingStatus = document.getElementById("landingStatus");
 
-        // --- 1. SEND DATA TO BACKEND ---
-        async function addPlayer() {
-            const name = nameInput.value.trim();
-            if (!name) return; // Prevent sending blank names
-            
-            // Disable UI while sending
-            addButton.disabled = true;
-            addButton.textContent = "Adding...";
-            
+        const existingPlayer = loadPlayer();
+        if (existingPlayer && existingPlayer.name) {
+            playerName.value = existingPlayer.name;
+        }
+
+        async function refreshCounts() {
             try {
-                // Send the POST request
-                await fetch(GAS_URL, {
-                    method: "POST",
-                    body: JSON.stringify({ action: "addPlayer", name: name })
-                });
-                
-                // Clear input box on success
-                nameInput.value = "";
-                
-                // Force an immediate refresh so you don't wait for the next 3-second tick
-                await refreshData();
+                const data = await api("bootstrap", existingPlayer ? { token: existingPlayer.sessionToken } : {});
+                updateStatElements(data.counts || {});
             } catch (error) {
-                console.error("Error adding player:", error);
-                alert("Failed to add player. Check console for details.");
-            } finally {
-                // Re-enable UI
-                addButton.disabled = false;
-                addButton.textContent = "Add Player";
+                landingStatus.textContent = error.message;
             }
         }
 
-        // Trigger addPlayer on button click
-        addButton.addEventListener("click", addPlayer);
-        
-        // Trigger addPlayer when pressing "Enter" on the keyboard
-        nameInput.addEventListener("keypress", function(event) {
+        async function continueToProfile() {
+            const name = playerName.value.trim();
+            if (!name) {
+                landingStatus.textContent = "Enter a player name first.";
+                return;
+            }
+
+            continueButton.disabled = true;
+            continueButton.textContent = "Saving...";
+            landingStatus.textContent = "Registering player...";
+
+            try {
+                const result = await api("registerPlayer", { name });
+                const player = result.player;
+                savePlayer({
+                    playerId: player.playerId,
+                    name: player.name,
+                    elo: player.elo,
+                    sessionToken: player.sessionToken,
+                    status: player.status,
+                    currentMatchId: player.currentMatchId || ""
+                });
+
+                window.location.href = "profile.html";
+            } catch (error) {
+                landingStatus.textContent = error.message;
+            } finally {
+                continueButton.disabled = false;
+                continueButton.textContent = "Continue to profile";
+            }
+        }
+
+        continueButton.addEventListener("click", continueToProfile);
+        playerName.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
-                event.preventDefault();
-                addButton.click();
+                continueToProfile();
             }
         });
 
-        // --- 2. FETCH DATA FROM BACKEND ---
-        async function refreshData() {
-            try {
-                // Visual feedback that a fetch is happening
-                statusIndicator.textContent = "Fetching...";
-                statusIndicator.style.color = "#fbbf24"; 
-                
-                const response = await fetch(GAS_URL);
-                const data = await response.json();
-                
-                // Print the raw array to the screen
-                output.textContent = JSON.stringify(data.playerData, null, 2);
-                
-                // Update the "Last updated" timestamp
-                const now = new Date();
-                statusIndicator.textContent = "Last updated: " + now.toLocaleTimeString();
-                statusIndicator.style.color = "#10b981"; 
-            } catch (error) {
-                output.textContent = "Error loading data: " + error.message;
-                statusIndicator.textContent = "Connection error";
-                statusIndicator.style.color = "#ef4444"; 
-            }
-        }
-
-        // --- 3. START THE LOOP ---
-        // Fetch once immediately on page load
-        refreshData();
-        
-        // Then repeat every 3000 milliseconds (3 seconds)
-        setInterval(refreshData, 3000); 
+        refreshCounts();
+        setInterval(refreshCounts, 5000);
     </script>
 </body>
 </html>
