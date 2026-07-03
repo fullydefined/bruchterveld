@@ -58,40 +58,35 @@
     </div>
 
     <script>
-        // Your exact Web App URL
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwq6LDLCrEi6_b8_eJL3kE2uHPfqdSItc2xocvdKD_gY0cJfeXylIEH3BOAUPwgEtjpVw/exec";
-        
-        const btn = document.getElementById("pingButton");
-        const output = document.getElementById("output");
+<!-- Inside your <script> tag -->
+<script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwq6LDLCrEi6_b8_eJL3kE2uHPfqdSItc2xocvdKD_gY0cJfeXylIEH3BOAUPwgEtjpVw/exec";
 
-        btn.addEventListener("click", async () => {
-            // Update UI while waiting
-            btn.disabled = true;
-            btn.textContent = "Fetching data...";
-            output.style.color = "#94a3b8";
-            output.textContent = "Calling Google Apps Script... (This usually takes 0.5 - 1.5 seconds)";
-            
-            try {
-                // 1. The HTTP GET request
-                const response = await fetch(GAS_URL);
-                
-                // 2. Parse the JSON response
-                const data = await response.json();
-                
-                // 3. Print it to the screen nicely formatted
-                output.style.color = "#10b981"; // Change text to green on success
-                output.textContent = JSON.stringify(data, null, 2);
-                
-            } catch (error) {
-                // Catch any CORS errors or network failures
-                output.style.color = "#ef4444"; // Change text to red on error
-                output.textContent = "Error: " + error.message + "\n\nMake sure your Web App is deployed with access set to 'Anyone'.";
-            } finally {
-                // Reset button
-                btn.disabled = false;
-                btn.textContent = "Ping Backend Database";
-            }
+    // 1. Function to send data
+    async function addPlayer(name) {
+        await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "addPlayer", name: name })
         });
-    </script>
+        document.getElementById("nameInput").value = ""; // Clear input
+    }
+
+    // 2. The Polling Loop (3 seconds)
+    async function refreshData() {
+        const response = await fetch(GAS_URL);
+        const data = await response.json();
+        document.getElementById("output").textContent = JSON.stringify(data.playerData, null, 2);
+    }
+
+    setInterval(refreshData, 3000); 
+    refreshData(); // Run once immediately on load
+</script>
+
+<!-- Add this inside your HTML body -->
+<div class="container">
+    <input type="text" id="nameInput" placeholder="Enter player name...">
+    <button onclick="addPlayer(document.getElementById('nameInput').value)">Add Player</button>
+    <pre id="output"></pre>
+</div>
 </body>
 </html>
