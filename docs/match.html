@@ -104,7 +104,7 @@
     }
 
     async function pollMatch() {
-      const stored = loadPlayer();
+      const stored = loadPlayer() || currentPlayer || urlPlayer;
       if (!stored) {
         window.location.href = "index.html";
         return;
@@ -146,7 +146,7 @@
     }
 
     lostButton.addEventListener("click", async () => {
-      const stored = loadPlayer();
+      const stored = loadPlayer() || currentPlayer || urlPlayer;
       if (!stored) {
         window.location.href = "index.html";
         return;

@@ -95,9 +95,6 @@ function ensurePlayer() {
 async function api(action, payload = {}) {
   const response = await fetch(GAS_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
     body: JSON.stringify({ action, ...payload })
   });
 
