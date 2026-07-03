@@ -1,0 +1,14 @@
+file -> new folder
+clasp clone 1sviHRBfUj2zNqs0vYz_y75dluVhTQ_uWua_D2aWctVnfmNJ-fr8t9Mux
+clasp pull (if changes are made in the editor)
+
+clasp push (to send files to web editor)
+
+clasp deployments (to see deployment ID)
+clasp deploy --deploymentId AKfycbwq6LDLCrEi6_b8_eJL3kE2uHPfqdSItc2xocvdKD_gY0cJfeXylIEH3BOAUPwgEtjpVw
+
+
+How to revert back to another version
+clasp versions
+clasp pull --versionNumber 34
+clasp push

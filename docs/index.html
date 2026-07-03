@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elo Matchmaking - API Test</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            padding: 2rem; 
+            background-color: #0f172a; 
+            color: #f8fafc; 
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .container {
+            background-color: #1e293b; 
+            padding: 2rem; 
+            border-radius: 12px; 
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        button { 
+            padding: 0.75rem 1.5rem; 
+            background-color: #6366f1; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer; 
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #4f46e5; }
+        button:disabled { background-color: #475569; cursor: not-allowed; }
+        pre { 
+            background-color: #020617; 
+            padding: 1.5rem; 
+            border-radius: 8px; 
+            overflow-x: auto; 
+            color: #10b981; 
+            border: 1px solid #1e293b;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 style="margin-top: 0;">Server Connection Test</h1>
+        <p style="color: #94a3b8; margin-bottom: 2rem;">
+            Click the button below to trigger the <code>fetch()</code> command. The browser will reach out to your Google Apps Script URL and display the raw JSON data pulled from your Spreadsheet.
+        </p>
+        
+        <button id="pingButton">Ping Backend Database</button>
+
+        <h3 style="margin-top: 2rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem;">Database Response:</h3>
+        <pre id="output">Waiting for request...</pre>
+    </div>
+
+    <script>
+        // Your exact Web App URL
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwq6LDLCrEi6_b8_eJL3kE2uHPfqdSItc2xocvdKD_gY0cJfeXylIEH3BOAUPwgEtjpVw/exec";
+        
+        const btn = document.getElementById("pingButton");
+        const output = document.getElementById("output");
+
+        btn.addEventListener("click", async () => {
+            // Update UI while waiting
+            btn.disabled = true;
+            btn.textContent = "Fetching data...";
+            output.style.color = "#94a3b8";
+            output.textContent = "Calling Google Apps Script... (This usually takes 0.5 - 1.5 seconds)";
+            
+            try {
+                // 1. The HTTP GET request
+                const response = await fetch(GAS_URL);
+                
+                // 2. Parse the JSON response
+                const data = await response.json();
+                
+                // 3. Print it to the screen nicely formatted
+                output.style.color = "#10b981"; // Change text to green on success
+                output.textContent = JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                // Catch any CORS errors or network failures
+                output.style.color = "#ef4444"; // Change text to red on error
+                output.textContent = "Error: " + error.message + "\n\nMake sure your Web App is deployed with access set to 'Anyone'.";
+            } finally {
+                // Reset button
+                btn.disabled = false;
+                btn.textContent = "Ping Backend Database";
+            }
+        });
+    </script>
+</body>
+</html>
