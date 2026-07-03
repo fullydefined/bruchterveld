@@ -26,11 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return query.toString();
   }
 
-  function matchmakingHref(player) {
-    const query = playerQueryString(player);
-    return `matchmaking.html${query ? `?${query}` : ""}`;
-  }
-
   let player = loadPlayer();
 
   if (player) {
@@ -122,7 +117,6 @@ document.addEventListener("DOMContentLoaded", () => {
         profileNote.textContent = "The profile page keeps polling for live counts from GAS.";
       }
 
-      findMatchButton.href = matchmakingHref(player);
     } catch (error) {
       profileStatus.textContent = error.message;
     }
@@ -139,8 +133,6 @@ document.addEventListener("DOMContentLoaded", () => {
     findMatchButton.textContent = "Searching...";
     profileStatus.textContent = "Requesting a match...";
 
-    findMatchButton.href = matchmakingHref(stored);
-
     try {
       const result = await api("findMatch", { token: stored.sessionToken, name: stored.name, playerId: stored.playerId });
       if (result.player) {
@@ -153,6 +145,10 @@ document.addEventListener("DOMContentLoaded", () => {
         window.location.assign(`match.html${query ? `?${query}` : ""}`);
         return;
       }
+
+      const nextPlayer = result.player || stored;
+      const query = playerQueryString(nextPlayer);
+      window.location.assign(`matchmaking.html${query ? `?${query}` : ""}`);
     } catch (error) {
       profileStatus.textContent = error.message;
     } finally {
@@ -161,6 +157,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  findMatchButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    findMatch();
+  });
   refreshProfileButton.addEventListener("click", refreshProfile);
 
   refreshProfile();
